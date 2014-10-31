@@ -1,3 +1,5 @@
+package cf.mongo.test;
+
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,16 +57,16 @@ public class Test {
 			DBCollection properties = database.getCollection("properties");
 			DBCollection channels = database.getCollection("channels");
 
-			List<Tag> testTags = new ArrayList<Test.Tag>();
+			List<Tag> testTags = new ArrayList<Tag>();
 			for (int i = 0; i < 100; i++) {
 				testTags.add(new Tag("testTag" + i, "me"));
 			}
-			List<Property> testProps = new ArrayList<Test.Property>();
+			List<Property> testProps = new ArrayList<Property>();
 			for (int i = 0; i < 100; i++) {
 				testProps.add(new Property("testProperty" + i, String
 						.valueOf(i), "me"));
 			}
-			List<Channel> testChannels = new ArrayList<Test.Channel>();
+			List<Channel> testChannels = new ArrayList<Channel>();
 			for (int i = 0; i < 1000; i++) {
 				testChannels.add(new Channel("testChannel" + i, "me", Arrays
 						.asList(testTags.get(i % 100)), Arrays.asList(testProps
@@ -118,6 +120,7 @@ public class Test {
 //			populateData();
 
 			query();
+			
 			rawQueries();
 			
 		} catch (UnknownHostException e) {
@@ -176,7 +179,7 @@ public class Test {
 		// bulk operations
 		startTime = System.currentTimeMillis();
 		Pattern searchPattern = Pattern.compile("SR.*C008", Pattern.CASE_INSENSITIVE);	
-		Query<Test.Channel> updateQuery = ds.createQuery(Test.Channel.class).field("name").containsIgnoreCase(searchPattern.pattern());
+		Query<Channel> updateQuery = ds.createQuery(Channel.class).field("name").containsIgnoreCase(searchPattern.pattern());
 		UpdateResults<Channel> updateResult = ds.update(
 				updateQuery,
 				ds.createUpdateOperations(Channel.class).add("tags", new Tag("testMorphiaTag", "me"), false));
@@ -185,7 +188,11 @@ public class Test {
 		
 		startTime = System.currentTimeMillis();
 		result = ds.createQuery(Channel.class).field("tags.name").containsIgnoreCase("testMorphiaTag").asList();
-		System.out.println("update result: " + result.size()+ " : " + (System.currentTimeMillis() - startTime));
+		System.out.println("query for update result1 : " + result.size()+ " : " + (System.currentTimeMillis() - startTime));
+		
+		startTime = System.currentTimeMillis();
+		result = ds.createQuery(Channel.class).field("tags.name").containsIgnoreCase("testMorphiaTag").asList();
+		System.out.println("query for update result2 : " + result.size()+ " : " + (System.currentTimeMillis() - startTime));
 		
 //		startTime = System.currentTimeMillis();
 //		updateResult = ds.update(
@@ -204,11 +211,11 @@ public class Test {
 		
 		long startTime = System.currentTimeMillis();
 		// Insert
-		List<Tag> testTags = new ArrayList<Test.Tag>();
+		List<Tag> testTags = new ArrayList<Tag>();
 		for (int i = 0; i < 100; i++) {
 			testTags.add(new Tag("rawTestTag" + i, "me"));
 		}
-		List<Property> testProps = new ArrayList<Test.Property>();
+		List<Property> testProps = new ArrayList<Property>();
 		for (int i = 0; i < 100; i++) {
 			testProps.add(new Property("rawTestProperty" + i, String
 					.valueOf(i), "me"));
@@ -234,7 +241,9 @@ public class Test {
 		    	Channel ch = new Channel();
 		    	DBObject dbObject = cursor.next();
 		    	ch.fromBasicDBObject(dbObject);
-				ch.tags.add(new Tag("testRawTag", "me"));
+		    	List<Tag> tags = ch.getTags();
+				tags.add(new Tag("testRawTag", "me"));
+				ch.setTags(tags);
 		//    	System.out.println(ch.getName());
 				builder.find(new BasicDBObject("name", ch.getName())).updateOne(new BasicDBObject("$set", ch.getBasicDBObject()));
 		    }
@@ -644,165 +653,6 @@ public class Test {
 		}
 		
 	}
-	
-	public static class Tag {
-		@Indexed
-		private String name;
-		private String owner;
 
-		public Tag() {
 
-		}
-
-		public Tag(String name, String owner) {
-			super();
-			this.name = name;
-			this.owner = owner;
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		public String getOwner() {
-			return owner;
-		}
-		
-		public BasicDBObject getBasicDBObject()
-		{
-			BasicDBObject num = new BasicDBObject();
-			num.put("name", this.name );
-			num.put("owner", this.owner); 
-			return num;
-		}
-
-		public void fromBasicDBObject(DBObject dbObject) {
-			this.name = (String) dbObject.get("name");
-			this.owner  = (String) dbObject.get("owner");
-		}
-	}
-
-	public static class Property {
-		@Indexed		
-		private String name;
-		@Indexed
-		private String value;
-		private String owner;
-
-		public Property() {
-
-		}
-
-		public Property(String name, String value, String owner) {
-			super();
-			this.name = name;
-			this.value = value;
-			this.owner = owner;
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		public String getValue() {
-			return value;
-		}
-
-		public String getOwner() {
-			return owner;
-		}
-		
-		public BasicDBObject getBasicDBObject()
-		{
-			BasicDBObject num = new BasicDBObject();
-			num.put("name", this.name );
-			num.put("value", this.value );
-			num.put("owner", this.owner); 
-			return num;
-		}
-
-		public void fromBasicDBObject(DBObject dbObject) {
-			this.name = (String) dbObject.get("name");
-			this.name = (String) dbObject.get("value");
-			this.owner  = (String) dbObject.get("owner");
-		}
-
-	}
-
-	private static class Channel {		
-		@Indexed		
-		private String name;
-		private String owner;
-		@Indexed
-		@Embedded
-		private List<Tag> tags;
-		@Indexed
-		@Embedded
-		private List<Property> properties;
-
-		public Channel() {
-
-		}
-
-		public Channel(String name, String owner, List<Tag> tags,
-				List<Property> properties) {
-			super();
-			this.name = name;
-			this.owner = owner;
-			this.tags = tags;
-			this.properties = properties;
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		public String getOwner() {
-			return owner;
-		}
-
-		public Collection<Tag> getTags() {
-			return tags;
-		}
-
-		public Collection<Property> getProperties() {
-			return properties;
-		}
-		
-		public BasicDBObject getBasicDBObject()
-		{
-			BasicDBObject num = new BasicDBObject();
-			num.put("name", this.name );
-			num.put("owner", this.owner); 
-			DBObject tagList = new BasicDBList();
-			for (Tag tag: this.tags) {
-				tagList.put(String.valueOf(this.tags.indexOf(tag)), tag.getBasicDBObject());
-			}
-			num.put("tags", tagList); 
-			DBObject propertyList = new BasicDBList();
-			for (Property property: this.properties) {
-				propertyList.put(String.valueOf(this.properties.indexOf(property)), property.getBasicDBObject());
-			}
-			num.put("properties", propertyList);
-			return num;
-		}
-		
-		public void fromBasicDBObject(DBObject dbObject){
-			this.name = (String) dbObject.get("name");
-			this.owner  = (String) dbObject.get("owner");
-			this.properties = new ArrayList<Property>();
-			for(Object p : ((BasicDBList) dbObject.get("properties"))){
-				Property prop = new Property();
-				prop.fromBasicDBObject((DBObject) p);
-				this.properties.add(prop);
-			}
-			this.tags = new ArrayList<Tag>();
-			for(Object t : ((BasicDBList) dbObject.get("tags"))){
-				Tag tag = new Tag();
-				tag.fromBasicDBObject((DBObject) t);
-				this.tags.add(tag);
-			}
-		}
-
-	}
 }
